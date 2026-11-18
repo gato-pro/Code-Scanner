@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10151c">
+  <meta name="description" content="Scan QR codes and common barcodes with your camera or an image.">
+  <title>Code Scanner</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #10151c;
+      color: #f2f5f8;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      --muted: #a4afbd;
+      --line: #2a3542;
+      --accent: #88e0c0;
+      --surface: #171f29;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 50% -20%, rgba(52, 126, 112, .2), transparent 55%),
+        #10151c;
+    }
+
+    button, select, input { font: inherit; }
+    button, .file-label, select {
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: inherit;
+      background: #202a35;
+    }
+
+    button, .file-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease, transform .15s ease;
+    }
+
+    button:hover:not(:disabled), .file-label:hover {
+      background: #2a3744;
+      border-color: #506171;
+    }
+
+    button:active:not(:disabled), .file-label:active { transform: translateY(1px); }
+    button:focus-visible, .file-label:focus-within, select:focus-visible, a:focus-visible {
+      outline: 3px solid rgba(136, 224, 192, .7);
+      outline-offset: 3px;
+    }
+
+    button:disabled { cursor: not-allowed; opacity: .48; }
+    .primary { color: #101a18; background: var(--accent); border-color: var(--accent); }
+    .primary:hover:not(:disabled) { background: #a0eed2; border-color: #a0eed2; }
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      clip-path: inset(50%);
+    }
+
+    main {
+      width: min(100% - 32px, 760px);
+      margin: 0 auto;
+      padding: 56px 0 48px;
+    }
+
+    header { margin-bottom: 28px; text-align: center; }
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--accent);
+      font-size: .75rem;
+      font-weight: 750;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    h1 { margin: 0; font-size: clamp(2rem, 7vw, 3.2rem); letter-spacing: -.045em; }
+    header p:last-child { max-width: 520px; margin: 14px auto 0; color: var(--muted); line-height: 1.6; }
+
+    .card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(23, 31, 41, .94);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .24);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar .spacer { flex: 1; }
+    .toolbar select { max-width: 100%; padding: 0 34px 0 12px; }
+    #image-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
+    .file-label { white-space: nowrap; }
+
+    .scanner {
+      position: relative;
+      display: grid;
+      min-height: 300px;
+      place-items: center;
+      overflow: hidden;
+      background:
+        linear-gradient(45deg, #121922 25%, transparent 25%, transparent 75%, #121922 75%),
+        linear-gradient(45deg, #121922 25%, transparent 25%, transparent 75%, #121922 75%),
+        #151e28;
+      background-position: 0 0, 10px 10px;
+      background-size: 20px 20px;
+    }
+
+    video {
+      display: block;
+      width: 100%;
+      max-height: 460px;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+    }
+
+    .placeholder {
+      position: absolute;
+      max-width: 340px;
+      padding: 24px;
+      color: var(--muted);
+      line-height: 1.6;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .scan-frame {
+      position: absolute;
+      display: none;
+      width: min(62%, 300px);
+      aspect-ratio: 1;
+      border: 2px solid rgba(136, 224, 192, .85);
+      border-radius: 18px;
+      box-shadow: 0 0 0 999px rgba(0, 0, 0, .16);
+      pointer-events: none;
+    }
+
+    .is-scanning .scan-frame { display: block; }
+    .is-scanning .placeholder { display: none; }
+
+    .status {
+      min-height: 48px;
+      margin: 0;
+      padding: 14px 18px;
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.45;
+    }
+
+    .status[data-kind="error"] { color: #ffb5ad; }
+    .status[data-kind="success"] { color: var(--accent); }
+
+    .result {
+      padding: 20px;
+      border-top: 1px solid var(--line);
+    }
+
+    .result[hidden] { display: none; }
+    .result-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .result-heading h2 { margin: 0; font-size: 1rem; }
+    .format {
+      border: 1px solid #36554b;
+      border-radius: 999px;
+      padding: 4px 9px;
+      color: var(--accent);
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+
+    #result-text {
+      overflow-wrap: anywhere;
+      margin: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #111820;
+      color: #f4f7f9;
+      font: .95rem/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    .result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .result-actions a {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px;
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      color: #101a18;
+      font-weight: 650;
+      text-decoration: none;
+    }
+
+    .note {
+      margin: 18px auto 0;
+      max-width: 680px;
+      color: #8793a1;
+      font-size: .84rem;
+      line-height: 1.55;
+      text-align: center;
+    }
+
+    @media (max-width: 520px) {
+      main { width: min(100% - 20px, 760px); padding-top: 34px; }
+      .toolbar { padding: 12px; }
+      .toolbar .spacer { display: none; }
+      .toolbar select { flex: 1 1 100%; order: 2; }
+      .file-label, .toolbar button { flex: 1; }
+      .scanner { min-height: 250px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">Private, in your browser</p>
+      <h1>Code Scanner</h1>
+      <p>Scan QR codes and common barcodes with your camera, or decode a picture from your device.</p>
+    </header>
+
+    <section class="card" aria-label="Code scanner">
+      <div class="toolbar">
+        <button id="start-button" class="primary" type="button">Start camera</button>
+        <button id="stop-button" type="button" disabled>Stop</button>
+        <label class="file-label" for="image-input">Choose an image</label>
+        <input id="image-input" type="file" accept="image/*">
+        <span class="spacer"></span>
+        <label class="visually-hidden" for="camera-select">Camera</label>
+        <select id="camera-select" aria-label="Select camera">
+          <option value="">Default camera</option>
+        </select>
+      </div>
+
+      <div id="scanner" class="scanner">
+        <video id="video" muted playsinline aria-label="Camera preview"></video>
+        <div class="placeholder">Start your camera or choose an image containing a QR code or barcode.</div>
+        <div class="scan-frame" aria-hidden="true"></div>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite">Ready to scan. Camera access works on HTTPS (such as GitHub Pages) or localhost.</p>
+
+      <section id="result" class="result" aria-labelledby="result-heading" hidden>
+        <div class="result-heading">
+          <h2 id="result-heading">Scanned result</h2>
+          <span id="format" class="format"></span>
+        </div>
+        <p id="result-text"></p>
+        <div class="result-actions">
+          <button id="copy-button" type="button">Copy</button>
+          <a id="open-link" class="primary" href="#" target="_blank" rel="noopener noreferrer" hidden>
+            Open link
+          </a>
+        </div>
+      </section>
+    </section>
+
+    <p class="note">Images are decoded locally and are not uploaded. No scanner can guarantee every decorative, damaged, low-contrast, or unsupported code; focus, lighting, quiet zones, and camera quality can affect results.</p>
+  </main>
+
+  <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+  <script>
+    (() => {
+      const startButton = document.querySelector("#start-button");
+      const stopButton = document.querySelector("#stop-button");
+      const imageInput = document.querySelector("#image-input");
+      const cameraSelect = document.querySelector("#camera-select");
+      const scanner = document.querySelector("#scanner");
+      const video = document.querySelector("#video");
+      const status = document.querySelector("#status");
+      const resultPanel = document.querySelector("#result");
+      const resultText = document.querySelector("#result-text");
+      const formatLabel = document.querySelector("#format");
+      const copyButton = document.querySelector("#copy-button");
+      const openLink = document.querySelector("#open-link");
+      const supportedFormats = [
+        "QR_CODE", "DATA_MATRIX", "AZTEC", "PDF_417", "MAXICODE",
+        "CODE_128", "CODE_39", "CODE_93", "CODABAR", "ITF",
+        "EAN_8", "EAN_13", "UPC_A", "UPC_E"
+      ];
+
+      let reader;
+      let controls;
+      let scanGeneration = 0;
+      let currentText = "";
+
+      function setStatus(message, kind) {
+        status.textContent = message;
+        status.dataset.kind = kind || "";
+      }
+
+      function createReader() {
+        if (!window.ZXing) {
+          throw new Error("The scanning library could not be loaded. Check your internet connection and reload.");
+        }
+        const hints = new Map();
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+        hints.set(
+          ZXing.DecodeHintType.POSSIBLE_FORMATS,
+          supportedFormats.map((name) => ZXing.BarcodeFormat[name]).filter((format) => format !== undefined)
+        );
+        return new ZXing.BrowserMultiFormatReader(hints, 250);
+      }
+
+      function getReader() {
+        if (!reader) reader = createReader();
+        return reader;
+      }
+
+      function isNotFound(error) {
+        return Boolean(window.ZXing && error instanceof ZXing.NotFoundException);
+      }
+
+      function stopCamera() {
+        scanGeneration += 1;
+        if (controls) {
+          controls.stop();
+          controls = undefined;
+        }
+        if (reader) reader.reset();
+        scanner.classList.remove("is-scanning");
+        stopButton.disabled = true;
+        startButton.disabled = false;
+      }
+
+      function displayResult(decoded) {
+        currentText = decoded.getText();
+        const formatCode = decoded.getBarcodeFormat();
+        const formatName = Object.keys(ZXing.BarcodeFormat)
+          .find((key) => ZXing.BarcodeFormat[key] === formatCode && Number.isNaN(Number(key)));
+        resultText.textContent = currentText;
+        formatLabel.textContent = formatName ? formatName.replaceAll("_", " ") : "CODE";
+        resultPanel.hidden = false;
+        copyButton.disabled = false;
+
+        let safeUrl;
+        try {
+          const parsed = new URL(currentText.trim());
+          if (parsed.protocol === "http:" || parsed.protocol === "https:") safeUrl = parsed.href;
+        } catch {
+          safeUrl = undefined;
+        }
+        if (safeUrl) {
+          openLink.href = safeUrl;
+          openLink.hidden = false;
+        } else {
+          openLink.removeAttribute("href");
+          openLink.hidden = true;
+        }
+        setStatus("Code scanned successfully.", "success");
+      }
+
+      async function startCamera() {
+        stopCamera();
+        startButton.disabled = true;
+        stopButton.disabled = false;
+        scanner.classList.add("is-scanning");
+        setStatus("Starting camera…");
+        const generation = scanGeneration;
+        try {
+          const scanReader = getReader();
+          const nextControls = await scanReader.decodeFromVideoDevice(
+            cameraSelect.value || undefined,
+            video,
+            (decoded, error) => {
+              if (generation !== scanGeneration) return;
+              if (decoded) {
+                displayResult(decoded);
+                stopCamera();
+              } else if (error && !(error instanceof ZXing.NotFoundException)) {
+                setStatus(error.message || "Unable to read from the camera.", "error");
+              }
+            }
+          );
+          if (generation !== scanGeneration) {
+            nextControls.stop();
+            return;
+          }
+          controls = nextControls;
+          refreshCameras().catch((error) => {
+            setStatus(error.message || "Could not list available cameras.", "error");
+          });
+        } catch (error) {
+          stopCamera();
+          setStatus(error.message || "Camera could not be started. Check browser permissions and try again.", "error");
+        }
+      }
+
+      async function refreshCameras() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const selected = cameraSelect.value;
+        cameraSelect.replaceChildren(new Option("Default camera", ""));
+        let cameraNumber = 0;
+        for (const device of devices) {
+          if (device.kind !== "videoinput") continue;
+          cameraNumber += 1;
+          cameraSelect.add(new Option(device.label || `Camera ${cameraNumber}`, device.deviceId));
+        }
+        if ([...cameraSelect.options].some((option) => option.value === selected)) cameraSelect.value = selected;
+      }
+
+      async function decodeImage(file) {
+        stopCamera();
+        const generation = scanGeneration;
+        resultPanel.hidden = true;
+        setStatus(`Reading ${file.name}…`);
+        const imageUrl = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = async () => {
+          try {
+            const decoded = await getReader().decodeFromImageElement(image);
+            if (generation !== scanGeneration) return;
+            displayResult(decoded);
+          } catch (error) {
+            if (generation !== scanGeneration) return;
+            const notFound = isNotFound(error);
+            setStatus(
+              notFound
+                ? "No supported code was found in that image. Try a sharper, brighter image with the entire code visible."
+                : error.message || "The image could not be decoded.",
+              notFound ? "" : "error"
+            );
+          } finally {
+            URL.revokeObjectURL(imageUrl);
+          }
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(imageUrl);
+          setStatus("That image could not be opened.", "error");
+        };
+        image.src = imageUrl;
+      }
+
+      startButton.addEventListener("click", startCamera);
+      stopButton.addEventListener("click", () => {
+        stopCamera();
+        setStatus("Camera stopped.");
+      });
+      cameraSelect.addEventListener("change", () => {
+        if (!stopButton.disabled) startCamera();
+      });
+      imageInput.addEventListener("change", () => {
+        const [file] = imageInput.files;
+        if (file) decodeImage(file);
+        imageInput.value = "";
+      });
+      copyButton.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(currentText);
+          setStatus("Scanned text copied to clipboard.", "success");
+        } catch (error) {
+          setStatus(error.message || "Clipboard access failed. Select and copy the result text instead.", "error");
+        }
+      });
+
+      refreshCameras().catch((error) => {
+        setStatus(error.message || "Could not list available cameras.", "error");
+      });
+    })();
+  </script>
+</body>
+</html>
