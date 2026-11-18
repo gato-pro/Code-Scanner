@@ -2,6 +2,8 @@
 
 A static, browser-based scanner for QR codes and common 1D/2D barcode formats. It can scan from a camera or decode a local image; decoded text stays in the browser, with copy and safe HTTP(S) link actions.
 
+QR results preserve UTF-8 text, including emoji. Images can be selected or dragged onto the preview, and the light/dark theme follows the device preference with a manual toggle.
+
 Included formats: QR Code, Data Matrix, Aztec, PDF417, MaxiCode, Code 128, Code 39, Code 93, Codabar, ITF, EAN-8, EAN-13, UPC-A, and UPC-E.
 
 On phones, live scanning requests the rear-facing camera and 720p video when available, and confirms a result in consecutive frames to reduce false detections. You can select another camera after granting camera permission.

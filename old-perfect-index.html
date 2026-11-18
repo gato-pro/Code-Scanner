@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QR Scanner • Clean</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-light: #64748b;
+      --border: #e2e8f0;
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --surface: #f1f5f9;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --text-light: #94a3b8;
+      --border: #334155;
+      --primary: #818cf8;
+      --primary-dark: #6366f1;
+      --surface: #1e293b;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.5rem 1rem;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .container { max-width: 580px; margin: 0 auto; }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+
+    h1 { font-size: 2.2rem; font-weight: 700; }
+
+    .theme-toggle {
+      position: absolute;
+      top: 4px;
+      right: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .theme-toggle:hover { background: var(--primary); color: white; }
+
+    .theme-toggle svg { width: 22px; height: 22px; }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px -8px rgba(0,0,0,0.1);
+      overflow: hidden;
+      margin-bottom: 1.8rem;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab {
+      flex: 1;
+      padding: 14px;
+      text-align: center;
+      font-weight: 500;
+      color: var(--text-light);
+      cursor: pointer;
+    }
+
+    .tab.active {
+      color: var(--primary);
+      border-bottom: 3px solid var(--primary);
+      background: rgba(99,102,241,0.06);
+    }
+
+    .tab-content { padding: 1.8rem; }
+
+    #preview-container {
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 4 / 3;
+      margin-bottom: 1.5rem;
+    }
+
+    #preview { width: 100%; height: 100%; object-fit: cover; }
+
+    #canvas { display: none; }
+
+    .file-drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 3.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      background: var(--surface);
+      transition: 0.25s;
+    }
+
+    .file-drop-zone:hover,
+    .file-drop-zone.dragover {
+      border-color: var(--primary);
+      background: rgba(99,102,241,0.08);
+    }
+
+    .file-input { display: none; }
+
+    #result-area {
+      margin-top: 1.5rem;
+      padding: 1.5rem;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    #result-text {
+      font-family: ui-monospace, monospace;
+      font-size: 1.1rem;
+      word-break: break-all;
+      margin-bottom: 1.2rem;
+    }
+
+    .result-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .btn {
+      padding: 11px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: 0.2s;
+      font-size: 0.97rem;
+    }
+
+    .btn-primary  { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-outline:hover { background: rgba(99,102,241,0.08); }
+
+    .message {
+      padding: 1rem;
+      border-radius: 10px;
+      margin: 1rem 0;
+      background: rgba(220,38,38,0.1);
+      color: #dc2626;
+      border: 1px solid #fecdd3;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 520px) {
+      .result-actions { flex-direction: column; }
+      .btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>QR Code Scanner</h1>
+    <div class="theme-toggle" id="theme-toggle">
+      <!-- Sun SVG (light mode) -->
+      <svg id="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <!-- Moon SVG (dark mode) -->
+      <svg id="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="tabs">
+      <div class="tab active" data-tab="camera">Camera</div>
+      <div class="tab" data-tab="upload">Upload</div>
+    </div>
+
+    <div class="tab-content" id="camera-tab">
+      <div id="preview-container">
+        <video id="preview" autoplay playsinline muted></video>
+      </div>
+      <canvas id="canvas"></canvas>
+
+      <div id="camera-message" class="message hidden">
+        <div>Camera access was denied or is unavailable.</div>
+        <button class="btn btn-primary" id="retry-camera" style="margin-top:12px;">Retry Camera Access</button>
+      </div>
+    </div>
+
+    <div class="tab-content hidden" id="upload-tab">
+      <label for="file-input">
+        <div class="file-drop-zone" id="drop-zone">
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p style="margin:1rem 0 0.4rem">Click or drag image here</p>
+          <small>PNG · JPG · WebP</small>
+        </div>
+      </label>
+      <input type="file" id="file-input" class="file-input" accept="image/*">
+    </div>
+  </div>
+
+  <div id="result-area" class="hidden">
+    <div id="result-text">Waiting for scan…</div>
+    <div class="result-actions" id="result-actions"></div>
+  </div>
+</div>
+
+<script>
+// ────────────────────────────────────────────────
+const video = document.getElementById('preview');
+const canvasElement = document.getElementById('canvas');
+const ctx = canvasElement.getContext('2d');
+const resultText = document.getElementById('result-text');
+const resultArea = document.getElementById('result-area');
+const resultActions = document.getElementById('result-actions');
+const cameraMessage = document.getElementById('camera-message');
+const retryCameraBtn = document.getElementById('retry-camera');
+const themeToggle = document.getElementById('theme-toggle');
+const sunIcon   = document.getElementById('sun-icon');
+const moonIcon  = document.getElementById('moon-icon');
+
+let scanning = false;
+let lastResult = '';
+
+// Theme
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  sunIcon.style.display  = theme === 'dark' ? 'none' : 'block';
+  moonIcon.style.display = theme === 'dark' ? 'block' : 'none';
+}
+
+const saved = localStorage.getItem('theme') ||
+  (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+setTheme(saved);
+
+themeToggle.addEventListener('click', () => {
+  setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+});
+
+// Tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    const isCamera = tab.dataset.tab === 'camera';
+    document.getElementById('camera-tab').classList.toggle('hidden', !isCamera);
+    document.getElementById('upload-tab').classList.toggle('hidden', isCamera);
+
+    if (isCamera) startCamera();
+    else stopCamera();
+  });
+});
+
+// ─── Camera ───────────────────────────────────────
+async function startCamera() {
+  cameraMessage.classList.add('hidden');
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" }
+    });
+
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      video.play();
+      canvasElement.width = video.videoWidth;
+      canvasElement.height = video.videoHeight;
+      scanning = true;
+      scanLoop();
+    };
+ } catch (err) {
+    cameraMessage.classList.remove('hidden');
+
+    // let msg = "Camera access denied or unavailable.";
+    let btnText = "Retry Camera Access";
+
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        btnText = "I changed settings – try again";
+
+        // Optional: show extra help text
+        const help = document.createElement('div');
+        help.style.marginTop = '12px';
+        help.style.fontSize = '0.9rem';
+        // help.innerHTML = `
+        //     <strong>Chrome/Edge:</strong> Click lock/camera icon → Site settings → Camera → Allow<br>
+        //     Then click button below.
+        // `;
+        cameraMessage.appendChild(help);
+    }
+
+    cameraMessage.firstChild.textContent = ''; // clear old text
+    cameraMessage.insertAdjacentHTML('afterbegin', `<div>${msg}</div>`);
+    retryCameraBtn.textContent = btnText;
+
+    console.warn("Camera error:", err.name, err.message);
+}
+}
+
+function stopCamera() {
+  scanning = false;
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+    video.srcObject = null;
+  }
+}
+
+function scanLoop() {
+  if (!scanning) return;
+  ctx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+  const imageData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height, {
+    inversionAttempts: "dontInvert"
+  });
+
+  if (code?.data && code.data !== lastResult) {
+    lastResult = code.data;
+    showResult(code.data);
+  }
+
+  requestAnimationFrame(scanLoop);
+}
+
+// Retry button
+retryCameraBtn.addEventListener('click', startCamera);
+
+// ─── Upload ───────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+['dragover','dragenter'].forEach(ev => dropZone.addEventListener(ev, e => {
+  e.preventDefault(); dropZone.classList.add('dragover');
+}));
+['dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+}));
+
+dropZone.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+function handleFile(file) {
+  if (!file?.type.startsWith('image/')) return;
+  const img = new Image();
+  img.onload = () => {
+    canvasElement.width = img.width;
+    canvasElement.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, img.width, img.height);
+    const code = jsQR(data.data, data.width, data.height);
+    if (code?.data) showResult(code.data);
+    else showResult(null, "No QR code found in image.");
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+// ─── Result ───────────────────────────────────────
+function isValidUrl(str) {
+  try { return !!new URL(str); } catch { return false; }
+}
+
+function showResult(text, error = null) {
+  lastResult = text || '';
+  resultText.textContent = error || text || 'No result';
+  resultArea.classList.remove('hidden');
+
+  resultActions.innerHTML = '';
+
+  if (error) return;
+
+  if (isValidUrl(text)) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = 'Open Link';
+    btn.onclick = () => window.open(text, '_blank', 'noopener,noreferrer');
+    resultActions.appendChild(btn);
+  }
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'btn btn-outline';
+  copyBtn.textContent = 'Copy';
+  copyBtn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => copyBtn.textContent = 'Copy', 1600);
+    } catch {}
+  };
+  resultActions.appendChild(copyBtn);
+}
+
+// Init
+startCamera();
+
+</script>
+</body>
+</html>
