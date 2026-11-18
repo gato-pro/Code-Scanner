@@ -254,13 +254,13 @@
         <span class="spacer"></span>
         <label class="visually-hidden" for="camera-select">Camera</label>
         <select id="camera-select" aria-label="Select camera">
-          <option value="">Default camera</option>
+          <option value="">Rear camera (recommended)</option>
         </select>
       </div>
 
       <div id="scanner" class="scanner">
         <video id="video" muted playsinline aria-label="Camera preview"></video>
-        <div class="placeholder">Start your camera or choose an image containing a QR code or barcode.</div>
+        <div class="placeholder">Start your camera or choose an image. For live scanning, center the whole code, keep it in focus, and hold steady.</div>
         <div class="scan-frame" aria-hidden="true"></div>
       </div>
       <p id="status" class="status" role="status" aria-live="polite">Ready to scan. Camera access works on HTTPS (such as GitHub Pages) or localhost.</p>
@@ -384,14 +384,36 @@
         const generation = scanGeneration;
         try {
           const scanReader = getReader();
-          const nextControls = await scanReader.decodeFromVideoDevice(
-            cameraSelect.value || undefined,
+          const videoConstraints = {
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          };
+          if (cameraSelect.value) {
+            videoConstraints.deviceId = { exact: cameraSelect.value };
+          } else {
+            videoConstraints.facingMode = { ideal: "environment" };
+          }
+          let previousCandidate = "";
+          let candidateCount = 0;
+          const nextControls = await scanReader.decodeFromConstraints(
+            { video: videoConstraints, audio: false },
             video,
             (decoded, error) => {
               if (generation !== scanGeneration) return;
               if (decoded) {
-                displayResult(decoded);
-                stopCamera();
+                const candidate = `${decoded.getBarcodeFormat()}:${decoded.getText()}`;
+                if (candidate === previousCandidate) {
+                  candidateCount += 1;
+                } else {
+                  previousCandidate = candidate;
+                  candidateCount = 1;
+                }
+                if (candidateCount >= 2) {
+                  displayResult(decoded);
+                  stopCamera();
+                } else {
+                  setStatus("Code spotted. Hold the camera steady…");
+                }
               } else if (error && !(error instanceof ZXing.NotFoundException)) {
                 setStatus(error.message || "Unable to read from the camera.", "error");
               }
@@ -402,6 +424,9 @@
             return;
           }
           controls = nextControls;
+          if (status.textContent === "Starting camera…") {
+            setStatus("Camera is ready. Center the whole code, keep it in focus, and hold steady.");
+          }
           refreshCameras().catch((error) => {
             setStatus(error.message || "Could not list available cameras.", "error");
           });
@@ -415,7 +440,7 @@
         if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
         const devices = await navigator.mediaDevices.enumerateDevices();
         const selected = cameraSelect.value;
-        cameraSelect.replaceChildren(new Option("Default camera", ""));
+        cameraSelect.replaceChildren(new Option("Rear camera (recommended)", ""));
         let cameraNumber = 0;
         for (const device of devices) {
           if (device.kind !== "videoinput") continue;

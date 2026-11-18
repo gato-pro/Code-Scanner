@@ -4,6 +4,8 @@ A static, browser-based scanner for QR codes and common 1D/2D barcode formats. I
 
 Included formats: QR Code, Data Matrix, Aztec, PDF417, MaxiCode, Code 128, Code 39, Code 93, Codabar, ITF, EAN-8, EAN-13, UPC-A, and UPC-E.
 
+On phones, live scanning requests the rear-facing camera and 720p video when available, and confirms a result in consecutive frames to reduce false detections. You can select another camera after granting camera permission.
+
 ## Use on GitHub Pages
 
 Publish this repository (or a folder containing `index.html`) with GitHub Pages, then open the published HTTPS page. Camera access requires HTTPS or `localhost`. The scanner library is loaded from unpkg, so an internet connection is needed to load it.
