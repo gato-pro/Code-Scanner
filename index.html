@@ -220,7 +220,7 @@
     }
 
     .result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
-    .result-actions a {
+    .open-link {
       display: inline-flex;
       min-height: 44px;
       align-items: center;
@@ -232,6 +232,8 @@
       font-weight: 650;
       text-decoration: none;
     }
+
+    .open-link:hover:not(:disabled) { background: #a0eed2; border-color: #a0eed2; }
 
     .history {
       margin-top: 16px;
@@ -251,23 +253,7 @@
     .history-item time { color: var(--muted); font-size: .78rem; }
     .history-item-text { overflow-wrap: anywhere; margin: 0; white-space: pre-wrap; font: .9rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
     .history-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-    .history-actions button, .history-actions a { min-height: 36px; padding: 0 12px; font-size: .82rem; }
-    .history-actions a {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      color: inherit;
-      background: #202a35;
-      font-weight: 650;
-      text-decoration: none;
-    }
-
-    .history-actions a:hover {
-      background: #2a3744;
-      border-color: #506171;
-    }
+    .history-actions button { min-height: 36px; padding: 0 12px; font-size: .82rem; }
     .history-footnote { margin: 12px 0 0; color: var(--muted); font-size: .78rem; }
 
     .note {
@@ -297,13 +283,10 @@
     html[data-theme="light"] select { color: #1e293b; background: #fff; }
     html[data-theme="light"] button:hover:not(:disabled),
     html[data-theme="light"] .file-label:hover { background: #edf2f7; }
-    html[data-theme="light"] .primary,
-    html[data-theme="light"] .result-actions a { color: #10251c; background: var(--accent); }
+    html[data-theme="light"] .primary { color: #10251c; background: var(--accent); }
     html[data-theme="light"] .card { background: rgba(255, 255, 255, .95); }
     html[data-theme="light"] .history { background: rgba(255, 255, 255, .95); }
     html[data-theme="light"] .history-item { background: #f7f9fc; }
-    html[data-theme="light"] .history-actions a { color: #1e293b; background: #fff; }
-    html[data-theme="light"] .history-actions a:hover { background: #edf2f7; }
     html[data-theme="light"] .scanner {
       background:
         linear-gradient(45deg, #e8edf3 25%, transparent 25%, transparent 75%, #e8edf3 75%),
@@ -508,6 +491,7 @@
         if (safeUrl) {
           const link = existingLink || document.createElement("a");
           link.id = "open-link";
+          link.className = "primary open-link";
           link.href = safeUrl;
           link.target = "_blank";
           link.rel = "noopener noreferrer";
@@ -573,7 +557,7 @@
           const safeUrl = getSafeUrl(item.text);
           if (safeUrl) {
             const link = document.createElement("a");
-            link.className = "primary";
+            link.className = "primary open-link";
             link.href = safeUrl;
             link.target = "_blank";
             link.rel = "noopener noreferrer";
