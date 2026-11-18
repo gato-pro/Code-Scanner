@@ -10,6 +10,6 @@ On phones, live scanning requests the rear-facing camera and 720p video when ava
 
 ## Use on GitHub Pages
 
-Publish this repository (or a folder containing `index.html`) with GitHub Pages, then open the published HTTPS page. Camera access requires HTTPS or `localhost`. The scanner library is loaded from unpkg, so an internet connection is needed to load it.
+Publish this repository (or a folder containing `index.html`) with GitHub Pages, then open the published HTTPS page. Camera access requires HTTPS or `localhost`. The scanning libraries are loaded from jsDelivr and unpkg, so an internet connection is needed to load them.
 
-The scanner uses ZXing's multi-format decoder with its harder-search hint enabled. No decoder can guarantee every decorative, damaged, low-contrast, or unsupported code will scan; use a clear image, good lighting, and the full code including its quiet zone.
+The live camera uses jsQR for QR codes and ZXing's multi-format decoder for QR codes and common barcodes, with its harder-search hint enabled. Image uploads use ZXing. No decoder can guarantee every decorative, damaged, low-contrast, or unsupported code will scan; use a clear image, good lighting, and the full code including its quiet zone.
